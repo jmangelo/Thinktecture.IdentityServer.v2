@@ -157,6 +157,15 @@ namespace Thinktecture.IdentityServer.Web
                     new TokenServiceHostFactory(),
                     typeof(TokenServiceConfiguration))
                 );
+
+                if (configuration.WSTrust.EnableFederatedAuthentication)
+                {
+                    routes.Add(new ServiceRoute(
+                        Thinktecture.IdentityServer.Endpoints.Paths.WSTrustFederationBase,
+                        new FederatedTokenServiceHostFactory(),
+                        typeof(TokenServiceConfiguration))
+                    );
+                }
             }
             #endregion
         }
