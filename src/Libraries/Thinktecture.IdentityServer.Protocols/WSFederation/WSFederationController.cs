@@ -5,12 +5,15 @@
 
 using System;
 using System.ComponentModel.Composition;
+using System.Globalization;
 using System.IdentityModel.Services;
 using System.Security.Claims;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.UI;
 using Thinktecture.IdentityModel.Authorization.Mvc;
+using Thinktecture.IdentityModel.Constants;
+using Thinktecture.IdentityServer.Helper;
 using Thinktecture.IdentityServer.Repositories;
 using Thinktecture.IdentityServer.TokenService;
 
@@ -66,6 +69,37 @@ namespace Thinktecture.IdentityServer.Protocols.WSFederation
         #region Helper
         private ActionResult ProcessWSFederationSignIn(SignInRequestMessage message, ClaimsPrincipal principal)
         {
+            // ensure required credentials freshness
+            int requiredFreshnessInMinutes;
+            if (int.TryParse(message.Freshness, NumberStyles.Integer, CultureInfo.InvariantCulture, out requiredFreshnessInMinutes) && requiredFreshnessInMinutes >= 0)
+            {
+                var authenticationInstantClaim = principal.FindFirst(ClaimTypes.AuthenticationInstant);
+
+                if (authenticationInstantClaim == null)
+                {
+                    throw new InvalidOperationException("Could not find the authentication instant claim.");
+                }
+
+                DateTime authenticationInstantUtc;
+                if (!DateTime.TryParseExact(authenticationInstantClaim.Value, DateTimeFormats.Accepted, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out authenticationInstantUtc))
+                {
+                    throw new InvalidOperationException("The authentication instant claim contains an unsupported value.");
+                }
+
+                if (authenticationInstantUtc < DateTime.UtcNow.AddMinutes(-requiredFreshnessInMinutes))
+                {
+                    const string WSFederationFreshnessQueryStringKeyName = "wfresh";
+
+                    var queryStringCollection = HttpUtility.ParseQueryString(this.Request.Url.Query);
+
+                    queryStringCollection.Remove(WSFederationFreshnessQueryStringKeyName);
+
+                    string issueUrlWithoutFreshness = this.Request.Url.AbsolutePath + "?" + queryStringCollection.ToString();
+
+                    FormsAuthenticationHelper.RedirectToLoginPage(returnUrl: issueUrlWithoutFreshness);
+                }
+            };
+
             // issue token and create ws-fed response
             var response = FederatedPassiveSecurityTokenServiceOperations.ProcessSignInRequest(
                 message,

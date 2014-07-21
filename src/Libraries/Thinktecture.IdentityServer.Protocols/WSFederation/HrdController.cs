@@ -304,6 +304,9 @@ namespace Thinktecture.IdentityServer.Protocols.WSFederation
         private ActionResult RedirectToWSFedIdentityProvider(IdentityProvider identityProvider, SignInRequestMessage request)
         {
             var message = new SignInRequestMessage(new Uri(identityProvider.WSFederationEndpoint), ConfigurationRepository.Global.IssuerUri);
+
+            message.Freshness = request.Freshness;
+
             SetContextCookie(request.Context, request.Realm, identityProvider.WSFederationEndpoint);
 
             return new RedirectResult(message.WriteQueryString());

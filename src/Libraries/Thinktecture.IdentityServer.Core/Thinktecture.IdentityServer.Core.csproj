@@ -117,6 +117,7 @@
     <Compile Include="Configuration\RepositoryConfigurationSection.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Helper\CryptoHelper.cs" />
+    <Compile Include="Helper\FormsAuthenticationHelper.cs" />
     <Compile Include="Helper\X509Certificates.cs" />
     <Compile Include="Models\Client.cs" />
     <Compile Include="Models\ClientCertificate.cs" />
