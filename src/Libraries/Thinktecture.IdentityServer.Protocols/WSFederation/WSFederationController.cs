@@ -11,7 +11,7 @@ using System.Security.Claims;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.UI;
-using Thinktecture.IdentityModel.Authorization.Mvc;
+using Thinktecture.IdentityModel.Authorization;
 using Thinktecture.IdentityModel.Constants;
 using Thinktecture.IdentityServer.Helper;
 using Thinktecture.IdentityServer.Repositories;
@@ -19,7 +19,6 @@ using Thinktecture.IdentityServer.TokenService;
 
 namespace Thinktecture.IdentityServer.Protocols.WSFederation
 {
-    [ClaimsAuthorize(Constants.Actions.Issue, Constants.Resources.WSFederation)]
     public class WSFederationController : Controller
     {
         const string _cookieName = "wsfedsignout";
@@ -40,6 +39,15 @@ namespace Thinktecture.IdentityServer.Protocols.WSFederation
         [OutputCache(Location = OutputCacheLocation.None, NoStore=true)]
         public ActionResult Issue()
         {
+            bool isUserAuthorized = ClaimsAuthorization.CheckAccess(Constants.Actions.Issue, Constants.Resources.WSFederation);
+
+            if (!isUserAuthorized)
+            {
+                string issueUrlWithoutFreshness = GetIssueUrlWithoutFreshness();
+
+                FormsAuthenticationHelper.RedirectToLoginPage(returnUrl: issueUrlWithoutFreshness);
+            }
+
             Tracing.Start("WS-Federation endpoint.");
 
             if (!ConfigurationRepository.WSFederation.Enabled && ConfigurationRepository.WSFederation.EnableAuthentication)
@@ -88,13 +96,7 @@ namespace Thinktecture.IdentityServer.Protocols.WSFederation
 
                 if (authenticationInstantUtc < DateTime.UtcNow.AddMinutes(-requiredFreshnessInMinutes))
                 {
-                    const string WSFederationFreshnessQueryStringKeyName = "wfresh";
-
-                    var queryStringCollection = HttpUtility.ParseQueryString(this.Request.Url.Query);
-
-                    queryStringCollection.Remove(WSFederationFreshnessQueryStringKeyName);
-
-                    string issueUrlWithoutFreshness = this.Request.Url.AbsolutePath + "?" + queryStringCollection.ToString();
+                    string issueUrlWithoutFreshness = GetIssueUrlWithoutFreshness();
 
                     FormsAuthenticationHelper.RedirectToLoginPage(returnUrl: issueUrlWithoutFreshness);
                 }
@@ -111,6 +113,18 @@ namespace Thinktecture.IdentityServer.Protocols.WSFederation
                 .AddEndpoint(response.BaseUri.AbsoluteUri);
 
             return new WSFederationResult(response, requireSsl: ConfigurationRepository.WSFederation.RequireSslForReplyTo);
+        }
+
+        private string GetIssueUrlWithoutFreshness()
+        {
+            const string WSFederationFreshnessQueryStringKeyName = "wfresh";
+
+            var queryStringCollection = HttpUtility.ParseQueryString(this.Request.Url.Query);
+
+            queryStringCollection.Remove(WSFederationFreshnessQueryStringKeyName);
+
+            string issueUrlWithoutFreshness = this.Request.Url.AbsolutePath + "?" + queryStringCollection.ToString();
+            return issueUrlWithoutFreshness;
         }
 
         private ActionResult ProcessWSFederationSignOut(SignOutRequestMessage message)
