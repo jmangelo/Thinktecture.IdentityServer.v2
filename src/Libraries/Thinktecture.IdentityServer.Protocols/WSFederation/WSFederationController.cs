@@ -45,7 +45,9 @@ namespace Thinktecture.IdentityServer.Protocols.WSFederation
             {
                 string issueUrlWithoutFreshness = GetIssueUrlWithoutFreshness();
 
-                FormsAuthenticationHelper.RedirectToLoginPage(returnUrl: issueUrlWithoutFreshness);
+                string loginPageUrl = FormsAuthenticationHelper.GetLoginPageUrl(returnUrl: issueUrlWithoutFreshness);
+
+                return Redirect(loginPageUrl);
             }
 
             Tracing.Start("WS-Federation endpoint.");
@@ -98,7 +100,9 @@ namespace Thinktecture.IdentityServer.Protocols.WSFederation
                 {
                     string issueUrlWithoutFreshness = GetIssueUrlWithoutFreshness();
 
-                    FormsAuthenticationHelper.RedirectToLoginPage(returnUrl: issueUrlWithoutFreshness);
+                    string loginPageUrl = FormsAuthenticationHelper.GetLoginPageUrl(returnUrl: issueUrlWithoutFreshness);
+
+                    return Redirect(loginPageUrl);
                 }
             };
 
